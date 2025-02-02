@@ -19,7 +19,7 @@ pip install django-filter  # Filtering support
 
 
 
-#### 📌 Create a Django Project `INSTALLED_APPS`
+#### 📌 Create a Django Project
 ```python
 django-admin startproject myproject
 
@@ -31,8 +31,6 @@ python manage.py runserver
 
 
 
-
-
 #### 📌 Add to `INSTALLED_APPS`
 ```python
 INSTALLED_APPS = [
@@ -41,6 +39,35 @@ INSTALLED_APPS = [
 ```
 
 ---
+
+#### 📌 Connect to a Database `settings.py`
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',  # Use the MySQL backend
+        'NAME': 'HyDjango',                    # The name of your MySQL database
+        'USER': 'root',                        # Your MySQL username (default is 'root')
+        'PASSWORD': 'HydotTech',                   # Your MySQL password
+        'HOST': 'localhost',                   # Set to your MySQL server's host (localhost in this case)
+        'PORT': '3306',                        # Default MySQL port
+    }
+}
+
+
+```
+
+---
+
+#### 📌 Run the commands 
+```python
+python manage.py migrate 
+python manage.py createsuperuser --username admin --email admin@example.com
+
+
+```
+
+
+
 ### 🔹 2. Serializers
 #### 📌 What are Serializers?
 Serializers in DRF allow complex data types like Django models to be converted into JSON.

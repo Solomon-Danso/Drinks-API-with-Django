@@ -4,13 +4,35 @@
 Django REST Framework (DRF) is a powerful toolkit for building Web APIs in Django. It provides features such as authentication, serialization, and viewsets to simplify API development.
 
 ---
+https://www.django-rest-framework.org/
+
+
 ## 🔹 Main Topics
 
 ### 🔹 1. Installation & Setup
 #### 📌 Install DRF
-```sh
+```python
 pip install djangorestframework
+pip install markdown       # Markdown support for the browsable API.
+pip install django-filter  # Filtering support
 ```
+
+
+
+#### 📌 Create a Django Project `INSTALLED_APPS`
+```python
+django-admin startproject myproject
+
+python manage.py runserver
+
+```
+
+---
+
+
+
+
+
 #### 📌 Add to `INSTALLED_APPS`
 ```python
 INSTALLED_APPS = [

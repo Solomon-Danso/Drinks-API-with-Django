@@ -1,0 +1,3 @@
+2025-02-03 14:44:28,011 - ERROR - Failed to save snippet: {'language': [ErrorDetail(string='"Hausa" is not a valid choice.', code='invalid_choice')]}
+2025-02-03 14:45:42,879 - ERROR - Failed to save snippet: {'language': [ErrorDetail(string='"English" is not a valid choice.', code='invalid_choice')]}
+2025-02-03 14:45:42,879 - ERROR - Failed to save snippet: {'language': [ErrorDetail(string='"English" is not a valid choice.', code='invalid_choice')]}

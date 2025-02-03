@@ -17,3 +17,11 @@ class Snippet(models.Model):
     class Meta:
         ordering = ['created']
 
+
+class Roles(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    userID = models.CharField(max_length=255, null=True, blank=True)
+    Role = models.CharField(max_length=255)
+    class Meta:
+        ordering = ['created']
+

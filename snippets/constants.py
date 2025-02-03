@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime
 from rest_framework.parsers import JSONParser
+from django.db import connection
 
 
 class Constants:
@@ -89,6 +90,7 @@ class Constants:
 
 
     def Requester(request):
+
         try:
             if request.content_type == 'application/json':
                 FreshData = JSONParser().parse(request)
@@ -99,7 +101,36 @@ class Constants:
         
         return FreshData
 
+    def RoleAuthenticator(userId=None, role=None):
+        try:
+            # Secure parameterized query
+            query = '''
 
+            SELECT COUNT(*) 
+            FROM snippets_roles 
+            WHERE userID = %s 
+            AND (Role = %s OR Role = 'SuperAdmin')
+                
+              '''
+                
 
+            with connection.cursor() as cursor:
+                cursor.execute(query, [userId, role])
+                result = cursor.fetchone()
+            
+                       
+
+            # Check if any matching role exists
+            if result[0] == 0:
+                
+                return Constants.Response(Constants.failed, "Unauthorized: Role not found")
+            
+            # Role exists, continue execution
+            Constants.Logger(Constants.info, f"User {userId} authenticated with role {role}")
+            return None  # Indicating authentication success, continue with other logic
+
+        except Exception as e:
+            Constants.Logger(Constants.error, f"Database error in RoleAuthenticator: {str(e)}")
+            return Constants.Response(Constants.serverError, "Internal Server Error")
 
 

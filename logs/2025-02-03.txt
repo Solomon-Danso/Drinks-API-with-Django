@@ -1,4 +1,16 @@
-2025-02-03 14:44:28,011 - ERROR - Failed to save snippet: {'language': [ErrorDetail(string='"Hausa" is not a valid choice.', code='invalid_choice')]}
-2025-02-03 14:45:42,879 - ERROR - Failed to save snippet: {'language': [ErrorDetail(string='"English" is not a valid choice.', code='invalid_choice')]}
-2025-02-03 14:45:42,879 - ERROR - Failed to save snippet: {'language': [ErrorDetail(string='"English" is not a valid choice.', code='invalid_choice')]}
-2025-02-03 16:46:25,722 - ERROR - Failed to save snippet: {'code': [ErrorDetail(string='This field is required.', code='required')]}
+2025-02-03 18:46:50,429 - INFO - Query: 
+
+            SELECT COUNT(*) 
+            FROM snippets_roles 
+            WHERE userID = %s 
+            AND (Role = %s OR Role = 'SuperAdmin')
+                
+              
+2025-02-03 18:46:50,429 - INFO - Results: (0,)
+2025-02-03 18:46:50,429 - INFO - Results: (0,)
+2025-02-03 18:49:22,023 - INFO - Query: 123098 SuperAdmin
+2025-02-03 18:49:22,024 - INFO - Results: (0,)
+2025-02-03 18:49:22,024 - INFO - Results: (0,)
+2025-02-03 18:51:40,025 - INFO - User 123098 authenticated with role Can_View_Snippets
+2025-02-03 18:52:11,010 - INFO - User 10954147 authenticated with role Can_View_Snippets
+2025-02-03 18:52:11,010 - INFO - User 10954147 authenticated with role Can_View_Snippets

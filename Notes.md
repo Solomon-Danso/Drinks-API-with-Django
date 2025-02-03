@@ -160,6 +160,76 @@ Navigate to the API endpoint in the browser for an interactive UI.
 - Serializers help convert model instances to JSON.
 - Views can be FBV, CBV, or ViewSets.
 - Authentication and permissions help secure APIs.
+---
 
-🚀 Happy Coding!
+# 🔹 Practical Examples 
+
+### 📌 Create a Models
+```python
+from django.db import models
+from pygments.lexers import get_all_lexers
+from pygments.styles import get_all_styles
+
+LEXERS = [item for item in get_all_lexers() if item[1]]
+LANGUAGE_CHOICES = sorted([(item[1][0], item[0]) for item in LEXERS])
+STYLE_CHOICES = sorted([(item, item) for item in get_all_styles()])
+
+class Snippet(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    title = models.CharField(max_length=100, blank=True, default='')
+    code = models.TextField()
+    linenos = models.BooleanField(default=False)
+    language = models.CharField(choices=LANGUAGE_CHOICES, default='python', max_length=100)
+    style = models.CharField(choices=STYLE_CHOICES, default='friendly', max_length=100)
+
+    class Meta:
+        ordering = ['created']
+
+```
+
+---
+
+### 📌 Push the model into the database
+```python
+python manage.py makemigrations snippets
+python manage.py migrate snippets
+
+```
+
+---
+
+### 📌 Create a Serializer
+```python
+from rest_framework import serializers
+from snippets.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES
+
+class SnippetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Snippet
+        fields = ['id', 'title', 'code', 'linenos', 'language', 'style']
+
+
+```
+
+---
+
+### 📌 Create a View
+```python
+from rest_framework import serializers
+from snippets.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES
+
+class SnippetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Snippet
+        fields = ['id', 'title', 'code', 'linenos', 'language', 'style']
+
+
+```
+
+---
+
+
+
+
+
 

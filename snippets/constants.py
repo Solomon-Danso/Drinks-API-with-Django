@@ -4,6 +4,7 @@ import string
 import logging
 import os
 from datetime import datetime
+from rest_framework.parsers import JSONParser
 
 
 class Constants:
@@ -85,3 +86,20 @@ class Constants:
             logger.warning(message)
         else:
             logger.info(message)  # Default to INFO level if an invalid log level is passed
+
+
+    def Requester(request):
+        try:
+            if request.content_type == 'application/json':
+                FreshData = JSONParser().parse(request)
+            else:
+                FreshData = request.POST.dict()  # Convert form data to dictionary
+        except Exception as e:
+            Constants.Logger(Constants.error, e)
+        
+        return FreshData
+
+
+
+
+

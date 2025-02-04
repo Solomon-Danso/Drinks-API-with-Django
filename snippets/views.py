@@ -12,7 +12,6 @@ def snippets_list(request):
         auth = Const.RoleAuthenticator(request.headers.get('UserID'), "Can_View_Snippets")
         if auth is not None:
             return auth  
-
         
         snippets = Snippet.objects.all() # Database Operation
         serializer = SnippetSerializer(snippets, many=True) # Serializer Bridge

@@ -22,10 +22,41 @@ with open('input.txt', 'r', encoding='utf-8') as f:
 chars = sorted(list(set(text)))
 vocab_size = len(chars)
 # create a mapping from characters to integers
-stoi = { ch:i for i,ch in enumerate(chars) }
-itos = { i:ch for i,ch in enumerate(chars) }
-encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list of integers
-decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
+# Tokenization 
+stoi = {}
+for index, character in enumerate(chars):
+    stoi[character] = index
+
+# Step 3: Create a dictionary to map each number back to a character
+itos = {}
+for index, character in enumerate(chars):
+    itos[index] = character
+
+# Step 4: Define the encoder function
+def encode(s):
+    result = []  # Empty list to store the indices
+    for c in s:  # Loop through each character in the string
+        result.append(stoi[c])  # Add the corresponding index to the list
+    return result
+
+# Step 4: Define the decoder function using a loop
+def decode(l):
+    result = ""  # Empty string to store the decoded characters
+    for i in l:  # Loop through each index in the list
+        result += itos[i]  # Add the corresponding character to the string
+    return result
+
+
+# The encode and decode process is just finding the index in chars, basically !"#$%&'()*+,-./3:;=?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_abcdefghijklmnopqrstuvwxyz{|}
+
+msg = "Hydot Tech Is Back"
+msgIndex = encode(msg)
+print("Encoded Message: ",msgIndex)
+
+theMsgIndex = msgIndex
+theDecodeMsg = decode(theMsgIndex)
+print("Decoded Message ",theDecodeMsg)
+
 
 # Train and test splits
 data = torch.tensor(encode(text), dtype=torch.long)
@@ -35,13 +66,34 @@ val_data = data[n:]
 
 # data loading
 def get_batch(split):
-    # generate a small batch of data of inputs x and targets y
-    data = train_data if split == 'train' else val_data
-    ix = torch.randint(len(data) - block_size, (batch_size,))
-    x = torch.stack([data[i:i+block_size] for i in ix])
-    y = torch.stack([data[i+1:i+block_size+1] for i in ix])
-    x, y = x.to(device), y.to(device)
-    return x, y
+    """
+    Generates a batch of input sequences (x) and target sequences (y).
+
+    - 'split' determines whether we use training data ('train') or validation data ('val').
+    - Each sequence in x has block_size elements.
+    - Each sequence in y is shifted by 1 position (so the model learns to predict the next value).
+    """
+
+    # Select the appropriate dataset based on the split ('train' or 'val')
+    data = train_data if split == 'train' else val_data  
+
+    # Generate random starting indices for batch sequences
+    # Ensures that we pick sequences without exceeding data length
+    start_indices = torch.randint(len(data) - block_size, (batch_size,))
+    print("Start Indices:", start_indices)
+
+    # Create input sequences (x) by slicing data from the selected indices
+    # Each row in x contains block_size consecutive values from data
+    x = torch.stack([data[i:i+block_size] for i in start_indices])
+    print("The X (Input Sequences):", x)
+
+    # Create target sequences (y) by shifting each input sequence by one position
+    # This helps the model learn to predict the next value in the sequence
+    y = torch.stack([data[i+1:i+block_size+1] for i in start_indices])
+    print("The Y (Target Sequences):", y)
+
+    return x, y  # Return the input (x) and target (y) sequences
+
 
 @torch.no_grad()
 def estimate_loss():

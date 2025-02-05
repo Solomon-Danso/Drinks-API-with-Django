@@ -126,7 +126,16 @@ def predict(text):
         if token in stoi:
             vector[i] = stoi[token]
     output = model.generate(vector.unsqueeze(0).to(device), max_new_tokens=100)
-    return ''.join([itos[idx] for idx in output[0].tolist()])
+    
+    # Print the output to debug
+    print(f"Generated output indices: {output[0].tolist()}")
+    
+    # Ensure that all indices are valid for 'itos'
+    try:
+        return ''.join([itos[idx] for idx in output[0].tolist()])
+    except KeyError as e:
+        print(f"Invalid index encountered: {e}")
+        return "Error: Invalid index encountered in the model output."
 
 # Chatbot function
 def chat():

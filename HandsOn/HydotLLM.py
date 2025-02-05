@@ -207,6 +207,12 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
+# Save the trained model in the root folder (current directory)
+save_path = "trained_model.pth"  # or any name you prefer
+torch.save(m.state_dict(), save_path)
+print(f"Trained model saved to {save_path}")
+
+
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))

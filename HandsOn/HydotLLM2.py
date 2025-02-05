@@ -179,9 +179,9 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
-# Save model
-save_path = "trained_model.pth"
-torch.save(model.state_dict(), save_path)
+# Save entire model
+save_path = "trained_model_full.pth"
+torch.save(model, save_path)  # Save the entire model, not just the state_dict
 print(f"Trained model saved to {save_path}")
 
 # Example Q&A

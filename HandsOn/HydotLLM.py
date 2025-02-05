@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import json
 
 # hyperparameters
 batch_size = 16 # how many independent sequences will we process in parallel?
@@ -30,6 +31,12 @@ stoi = { ch:i for i,ch in enumerate(chars) }
 itos = { i:ch for i,ch in enumerate(chars) }
 encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list of integers
 decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
+
+
+vocab = {'stoi': stoi, 'itos': itos}
+with open('vocab.json', 'w') as f:
+    json.dump(vocab, f)
+
 
 # Train and test splits
 data = torch.tensor(encode(text), dtype=torch.long)
@@ -214,5 +221,5 @@ print(f"Trained model saved to {save_path}")
 
 
 # generate from the model
-context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
+# context = torch.zeros((1, 1), dtype=torch.long, device=device)
+# print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))

@@ -1,77 +1,190 @@
-import json
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.nn import functional as F
+import json
 
-# Load and preprocess text data
-with open('/content/source.txt', 'r', encoding='utf-8') as f:
-    text_data = f.readlines()
+# Hyperparameters
+batch_size = 16
+block_size = 128  # Larger context for question-answering
+max_iters = 5000
+eval_interval = 100
+learning_rate = 1e-3
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+eval_iters = 200
+n_embd = 128  # Larger embedding size for better performance in Q&A
+n_head = 8
+n_layer = 4
+dropout = 0.1
 
-# Tokenize the text into words
-tokenized_data = [line.strip().split() for line in text_data if line.strip()]
+torch.manual_seed(1337)
 
-# Create vocabulary
-vocab = {word: idx for idx, word in enumerate(set(word for sentence in tokenized_data for word in sentence))}
+# Load your notes or text data
+with open('/Users/glydetek/Desktop/Hydot/Contributions/Learn Django/Data/source.txt', 'r', encoding='utf-8') as f:
+    text = f.read()
 
-# Save vocabulary
-with open("vocab.json", "w") as f:
+# Tokenize the text
+chars = sorted(list(set(text)))
+vocab_size = len(chars)
+stoi = {ch: i for i, ch in enumerate(chars)}
+itos = {i: ch for i, ch in enumerate(chars)}
+encode = lambda s: [stoi[c] for c in s]
+decode = lambda l: ''.join([itos[i] for i in l])
+
+# Store vocab for later use
+vocab = {'stoi': stoi, 'itos': itos}
+with open('vocab.json', 'w') as f:
     json.dump(vocab, f)
 
-print("Vocabulary size:", len(vocab))
+# Train and validation splits
+data = torch.tensor(encode(text), dtype=torch.long)
+n = int(0.9 * len(data))  # 90% for training, 10% for validation
+train_data = data[:n]
+val_data = data[n:]
 
-# Dataset class
-class NotesDataset(Dataset):
-    def __init__(self, tokenized_data, vocab):
-        self.data = tokenized_data
-        self.vocab = vocab
-    
-    def __len__(self):
-        return len(self.data)
-    
-    def __getitem__(self, idx):
-        tokens = self.data[idx]
-        token_ids = [self.vocab.get(word, -1) for word in tokens]  # Default to -1 if word is not in vocab
-        # Ensure token_ids are valid (no -1 values)
-        token_ids = [token_id for token_id in token_ids if token_id != -1]
-        return torch.tensor(token_ids, dtype=torch.long)
+# Function to get a batch of data
+def get_batch(split):
+    data = train_data if split == 'train' else val_data
+    ix = torch.randint(len(data) - block_size, (batch_size,))
+    x = torch.stack([data[i:i + block_size] for i in ix])
+    y = torch.stack([data[i + 1:i + block_size + 1] for i in ix])
+    x, y = x.to(device), y.to(device)
+    return x, y
 
-# Model Definition
-class SimpleNN(nn.Module):
-    def __init__(self, input_size, embedding_dim, output_size):
-        super(SimpleNN, self).__init__()
-        self.embedding = nn.Embedding(input_size, embedding_dim)  # Use embeddings instead of one-hot
-        self.fc = nn.Linear(embedding_dim, output_size)  # A fully connected layer for the output
-    
+@torch.no_grad()
+def estimate_loss():
+    out = {}
+    model.eval()
+    for split in ['train', 'val']:
+        losses = torch.zeros(eval_iters)
+        for k in range(eval_iters):
+            X, Y = get_batch(split)
+            logits, loss = model(X, Y)
+            losses[k] = loss.item()
+        out[split] = losses.mean()
+    model.train()
+    return out
+
+class Head(nn.Module):
+    def __init__(self, head_size):
+        super().__init__()
+        self.key = nn.Linear(n_embd, head_size, bias=False)
+        self.query = nn.Linear(n_embd, head_size, bias=False)
+        self.value = nn.Linear(n_embd, head_size, bias=False)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x):
-        embedded = self.embedding(x)  # Lookup embedding for each token
-        # Aggregate the embeddings (e.g., by averaging)
-        x = embedded.mean(dim=1)
-        return self.fc(x)
+        B, T, C = x.shape
+        k = self.key(x)
+        q = self.query(x)
+        wei = q @ k.transpose(-2, -1) * C ** -0.5
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wei = F.softmax(wei, dim=-1)
+        wei = self.dropout(wei)
+        v = self.value(x)
+        out = wei @ v
+        return out
 
-# Prepare dataset and dataloader
-embedding_dim = 50  # Set embedding dimension
-dataset = NotesDataset(tokenized_data, vocab)
-dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+class MultiHeadAttention(nn.Module):
+    def __init__(self, num_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+        self.proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
 
-input_size = len(vocab)
-output_size = len(tokenized_data)  # Use number of sentences as output size
-model = SimpleNN(input_size, embedding_dim, output_size)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.01)
+    def forward(self, x):
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.dropout(self.proj(out))
+        return out
 
-# Training
-epochs = 100
-for epoch in range(epochs):
-    for text in dataloader:
-        optimizer.zero_grad()
-        output = model(text)  # Direct input to model after embedding lookup
-        labels = torch.tensor([idx for idx in range(len(text))])  # Dummy labels for unsupervised task
-        loss = criterion(output, labels)
-        loss.backward()
-        optimizer.step()
+class FeedForward(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 4 * n_embd),
+            nn.ReLU(),
+            nn.Linear(4 * n_embd, n_embd),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Block(nn.Module):
+    def __init__(self, n_embd, n_head):
+        super().__init__()
+        head_size = n_embd // n_head
+        self.sa = MultiHeadAttention(n_head, head_size)
+        self.ffwd = FeedForward(n_embd)
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+
+    def forward(self, x):
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
+        return x
+
+class TransformerQAModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
+        self.ln_f = nn.LayerNorm(n_embd)
+        self.lm_head = nn.Linear(n_embd, vocab_size)
+
+    def forward(self, idx, targets=None):
+        B, T = idx.shape
+        tok_emb = self.token_embedding_table(idx)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device))
+        x = tok_emb + pos_emb
+        x = self.blocks(x)
+        x = self.ln_f(x)
+        logits = self.lm_head(x)
+
+        if targets is None:
+            loss = None
+        else:
+            B, T, C = logits.shape
+            logits = logits.view(B * T, C)
+            targets = targets.view(B * T)
+            loss = F.cross_entropy(logits, targets)
+
+        return logits, loss
+
+    def generate_answer(self, question, max_new_tokens):
+        # Tokenize the question and generate the answer
+        idx = torch.tensor(encode(question), dtype=torch.long, device=device).unsqueeze(0)
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -block_size:]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :]
+            probs = F.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, idx_next), dim=1)
+        return decode(idx[0].tolist())
+
+model = TransformerQAModel().to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+# Training loop
+for iter in range(max_iters):
+    if iter % eval_interval == 0 or iter == max_iters - 1:
+        losses = estimate_loss()
+        print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+
+    xb, yb = get_batch('train')
+    logits, loss = model(xb, yb)
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    optimizer.step()
 
 # Save model
-torch.save(model.state_dict(), "trained_model.pth")
-print("Model trained and saved as trained_model.pth")
+save_path = "trained_model.pth"
+torch.save(model.state_dict(), save_path)
+print(f"Trained model saved to {save_path}")
+
+# Example Q&A
+question = "What is Human-Computer Interaction?"
+answer = model.generate_answer(question, max_new_tokens=200)
+print(f"Answer: {answer}")

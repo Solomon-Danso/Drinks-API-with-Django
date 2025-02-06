@@ -81,7 +81,7 @@ def save_pdf_to_db(file_name, file_text):
 def load_pdfs_from_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT Id, fileName FROM documents")
+    cursor.execute("SELECT Id, fileName FROM documents order by Id desc")
     pdfs = cursor.fetchall()
     conn.close()
     return pdfs
@@ -160,16 +160,16 @@ def delete_document_by_id(doc_id):
     
     if result:  # Ensure there is a valid result
         file_name = result[0]  # Extract fileName from tuple
-        confirmation = st.warning(f"⚠️ Are you sure you want to delete document **{file_name}**? This action is irreversible.")
+        confirmation = st.warning(f"⚠️ Are you sure **{file_name}**?")
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("✅ Yes, Delete"):
+            if st.button("✅"):
                 delete_document(doc_id)  # Call the delete function
                 st.success(f"🗑️ Document **{file_name}** deleted successfully!")
                 st.experimental_rerun()  # Refresh the page
         with col2:
-            if st.button("❌ No, Cancel"):
+            if st.button("❌"):
                 st.experimental_rerun()  # Refresh without deleting
     else:
         st.error("❌ Document not found in the database.")

@@ -100,9 +100,9 @@ st.markdown("---")
 pdfs = load_pdfs_from_db()
 
 if pdfs:
-    st.subheader("Available PDFs")
+    st.subheader("Available Sources")
     options = ["Select a document"] + [f"{pdf[0]}: {pdf[1]}" for pdf in pdfs] + ["Global"]
-    selected_option = st.selectbox("Select a document by Id or choose 'Global'", options)
+    selected_option = st.selectbox("Select a document source by Id or choose 'Global'", options)
     
     selected_id = None if selected_option == "Select a document" or selected_option == "Global" else int(selected_option.split(':')[0])
     
@@ -195,8 +195,13 @@ if user_input:
     with st.spinner("Generating Response..."):
         if selected_option == "Global":
             context_text = ""  # No document context needed
+        
+        elif selected_option == "Global":
+            # If "Global" is selected, no document context is used
+            context_text = ""
+            st.info("🌎 Global mode activated. You will be talking directly to the LLM.")
         else:
-            relevant_docs = load_all_documents_from_db()  # Load all stored docs
+            relevant_docs = [get_document_by_id(selected_id)]
             context_text = "\n\n".join(relevant_docs) if relevant_docs else "No relevant context found."
 
         conversation_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)

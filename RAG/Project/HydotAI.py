@@ -6,6 +6,9 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 import pdfplumber
+import fitz  # PyMuPDF
+import io
+import time
 
 # Database Setup
 DB_PATH = 'document_store/documents.db'
@@ -44,12 +47,27 @@ def init_db():
 init_db()
 
 # Save extracted text to SQLite
+# def save_pdf_to_db(file_name, file_text):
+#     conn = sqlite3.connect(DB_PATH)
+#     cursor = conn.cursor()
+#     cursor.execute("INSERT INTO documents (fileName, Data) VALUES (?, ?)", (file_name, file_text))
+#     conn.commit()
+#     conn.close()
+
+
 def save_pdf_to_db(file_name, file_text):
+    # Generate a timestamp
+    timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format as YYYYMMDD-HHMMSS
+    # Append the timestamp to the file name
+    file_name_with_timestamp = f"{file_name}_{timestamp}"
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO documents (fileName, Data) VALUES (?, ?)", (file_name, file_text))
+    cursor.execute("INSERT INTO documents (fileName, Data) VALUES (?, ?)", (file_name_with_timestamp, file_text))
     conn.commit()
     conn.close()
+
+
 
 # Load PDFs from SQLite
 def load_pdfs_from_db():
@@ -70,11 +88,26 @@ def get_document_by_id(doc_id):
     return doc[0] if doc else None
 
 # Extract text from PDF bytes
-def extract_text_from_pdf(uploaded_file):
-    with pdfplumber.open(uploaded_file) as pdf:
-        text = "\n".join([page.extract_text() or "" for page in pdf.pages])
-    return text
+# def extract_text_from_pdf(uploaded_file):
+#     with pdfplumber.open(uploaded_file) as pdf:
+#         text = "\n".join([page.extract_text() or "" for page in pdf.pages])
+#     return text
 
+def extract_text_from_pdf(uploaded_file):
+    # Read the file as bytes
+    pdf_bytes = uploaded_file.read()
+
+    # Open the PDF using the raw bytes
+    pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+    text = ""
+    
+    # Loop through each page in the PDF
+    for page in pdf:
+        # Extract text from the page
+        text += page.get_text("text")
+    
+    return text
 # Load all document text from database
 def load_all_documents_from_db():
     conn = sqlite3.connect(DB_PATH)

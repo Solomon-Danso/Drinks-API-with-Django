@@ -134,10 +134,13 @@ def save_chat_to_db(user_query, assistant_response, document_id=None):
     conn.close()
 
 # Load chat history from the database
-def load_chat_history_from_db():
+def load_chat_history_from_db(document_id=None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT user_query, assistant_response, timestamp FROM chat_history ORDER BY timestamp ASC")
+    if document_id:
+        cursor.execute("SELECT user_query, assistant_response, timestamp FROM chat_history WHERE document_id = ? ORDER BY timestamp ASC", (document_id,))
+    else:
+        cursor.execute("SELECT user_query, assistant_response, timestamp FROM chat_history ORDER BY timestamp ASC")
     chat_history = cursor.fetchall()
     conn.close()
     return chat_history
@@ -177,8 +180,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Display the chat history (optional)
-if st.checkbox("Show chat history"):
-    chat_history = load_chat_history_from_db()
+if selected_id:
+    chat_history = load_chat_history_from_db(document_id=selected_id)
     for query, response, timestamp in chat_history:
         st.markdown(f"**{timestamp}**")
         st.markdown(f"<div class='chat-container'><div class='user-chat'>{query}</div><div class='assistant-chat'>{response}</div></div>", unsafe_allow_html=True)

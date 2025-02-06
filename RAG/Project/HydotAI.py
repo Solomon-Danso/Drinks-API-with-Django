@@ -9,21 +9,68 @@ import pdfplumber
 import fitz  # PyMuPDF
 import io
 import time
+import subprocess  # To run system commands
+
+
+
+st.title("📘 Hydot AI")
+st.markdown("### Your Intelligent Assistant")
+st.markdown("---")
 
 # Database Setup
-DB_PATH = 'document_store/documents.db'
-EMBEDDING_MODEL = OllamaEmbeddings(model="deepseek-r1:1.5b")
-DOCUMENT_VECTOR_DB = InMemoryVectorStore(EMBEDDING_MODEL)
-LANGUAGE_MODEL = OllamaLLM(model="deepseek-r1:1.5b")
+DB_PATH = 'Database/documents.db'
 
-# PROMPT_TEMPLATE = """
-# You are an expert research assistant. Use the provided context to answer the query. 
-# If unsure, state that you don't know. Be concise and factual (max 3 sentences). 
+# Function to check if Ollama is running
+def is_ollama_running():
+    try:
+        result = subprocess.run(["ps", "aux"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return "ollama serve" in result.stdout.decode("utf-8")
+    except Exception as e:
+        st.error(f"Error checking if Ollama is running: {e}")
+        return False
 
-# Query: {user_query} 
-# Context: {document_context} 
-# Answer:
-# """
+# Function to start Ollama if it's not running
+def start_ollama():
+    try:
+        subprocess.Popen(["ollama", "serve"])
+        st.success("✅ Ollama has been started!")
+    except Exception as e:
+        st.error(f"Failed to start Ollama: {e}")
+
+# Check if Ollama is running and start it if not
+if not is_ollama_running():
+    st.info("Ollama is not running. Starting Ollama...")
+    start_ollama()
+
+
+
+# Function to get the available models using the 'ollama list' command
+def get_available_ollama_models():
+    try:
+        result = subprocess.run(["ollama", "list"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        models_output = result.stdout.decode("utf-8").splitlines()  # Parse the output into lines
+        
+        # Extract model names from the output
+        models = [line.split()[0] for line in models_output[1:]]  # Skipping header line
+        return models
+    except Exception as e:
+        st.error(f"Failed to retrieve models: {e}")
+        return []
+
+# Get available models and let the user select one
+ollama_models = get_available_ollama_models()
+
+st.subheader("Choose Your Model")
+selected_model = st.selectbox("Select an LLM model", ollama_models)
+
+# Initialize the selected model dynamically
+if selected_model:
+    EMBEDDING_MODEL = OllamaEmbeddings(model=selected_model)
+    DOCUMENT_VECTOR_DB = InMemoryVectorStore(EMBEDDING_MODEL)
+    LANGUAGE_MODEL = OllamaLLM(model=selected_model)
+
+
+
 
 PROMPT_TEMPLATE = """
 Query: {user_query} 
@@ -126,9 +173,7 @@ def process_pdf_text(text):
     return "\n\n".join(chunks)
 
 # UI Configuration
-st.title("📘 Hydot AI")
-st.markdown("### Your Intelligent Document Assistant")
-st.markdown("---")
+
 
 def delete_document(doc_id):
     conn = sqlite3.connect(DB_PATH)

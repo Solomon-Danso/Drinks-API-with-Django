@@ -16,14 +16,22 @@ EMBEDDING_MODEL = OllamaEmbeddings(model="deepseek-r1:1.5b")
 DOCUMENT_VECTOR_DB = InMemoryVectorStore(EMBEDDING_MODEL)
 LANGUAGE_MODEL = OllamaLLM(model="deepseek-r1:1.5b")
 
-PROMPT_TEMPLATE = """
-You are an expert research assistant. Use the provided context to answer the query. 
-If unsure, state that you don't know. Be concise and factual (max 3 sentences). 
+# PROMPT_TEMPLATE = """
+# You are an expert research assistant. Use the provided context to answer the query. 
+# If unsure, state that you don't know. Be concise and factual (max 3 sentences). 
 
+# Query: {user_query} 
+# Context: {document_context} 
+# Answer:
+# """
+
+PROMPT_TEMPLATE = """
 Query: {user_query} 
-Context: {document_context} 
-Answer:
+Context: {document_context}  
+Response:
 """
+
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -129,24 +137,72 @@ st.title("📘 Hydot AI")
 st.markdown("### Your Intelligent Document Assistant")
 st.markdown("---")
 
+def delete_document(doc_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM documents WHERE Id = ?", (doc_id,))
+    conn.commit()
+    conn.close()
+    st.success(f"✅ Document {doc_id} deleted successfully!")
+
+def Query(query):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(query)
+    result = cursor.fetchone()
+    conn.commit()
+    conn.close()
+    return result
+
+
+def delete_document_by_id(doc_id):
+    result = Query(f"SELECT fileName FROM documents WHERE Id = {doc_id}")
+    
+    if result:  # Ensure there is a valid result
+        file_name = result[0]  # Extract fileName from tuple
+        confirmation = st.warning(f"⚠️ Are you sure you want to delete document **{file_name}**? This action is irreversible.")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Yes, Delete"):
+                delete_document(doc_id)  # Call the delete function
+                st.success(f"🗑️ Document **{file_name}** deleted successfully!")
+                st.experimental_rerun()  # Refresh the page
+        with col2:
+            if st.button("❌ No, Cancel"):
+                st.experimental_rerun()  # Refresh without deleting
+    else:
+        st.error("❌ Document not found in the database.")
+
+
 # List PDFs from Database
 pdfs = load_pdfs_from_db()
 
 if pdfs:
     st.subheader("Available Sources")
-    options = ["Select a document"] + [f"{pdf[0]}: {pdf[1]}" for pdf in pdfs] + ["Global"]
-    selected_option = st.selectbox("Select a document source by Id or choose 'Global'", options)
-    
-    selected_id = None if selected_option == "Select a document" or selected_option == "Global" else int(selected_option.split(':')[0])
-    
+
+    options = ["Global"] + [f"{pdf[0]}: {pdf[1]}" for pdf in pdfs]
+    selected_option = st.selectbox("Select a document source by Id or use 'Global'", options, index=0)
+
+    selected_id = None if selected_option == "Global" else int(selected_option.split(':')[0])
+
     if selected_id:
+        # Display delete icon next to document selection
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.write(f"**Selected Document:** {selected_option}")
+        with col2:
+            if st.button("🗑️", key=f"delete_{selected_id}"):
+                delete_document_by_id(selected_id)
+
+        # Proceed only if document hasn't been deleted
         document_text = get_document_by_id(selected_id)
         if document_text:
             processed_chunks = process_pdf_text(document_text)
             st.success(f"✅ Document {selected_option} loaded successfully!")
         else:
             st.error("❌ Document not found in database.")
-    
+
     elif selected_option == "Global":
         st.info("🌎 Global mode activated. You will be talking directly to the LLM.")
 

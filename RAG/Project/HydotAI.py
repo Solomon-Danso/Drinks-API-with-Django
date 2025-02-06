@@ -30,6 +30,14 @@ def init_db():
                         fileName TEXT UNIQUE,
                         Data TEXT
                     )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS chat_history (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_query TEXT,
+                        assistant_response TEXT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        document_id INTEGER,
+                        FOREIGN KEY (document_id) REFERENCES documents(Id)
+                    )''')
     conn.commit()
     conn.close()
 
@@ -116,6 +124,33 @@ if uploaded_pdf:
     save_pdf_to_db(uploaded_pdf.name, extracted_text)
     st.success("✅ New document processed and stored in the database!")
 
+# Save chat history to the database
+def save_chat_to_db(user_query, assistant_response, document_id=None):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO chat_history (user_query, assistant_response, document_id) VALUES (?, ?, ?)", 
+                   (user_query, assistant_response, document_id))
+    conn.commit()
+    conn.close()
+
+# Load chat history from the database
+def load_chat_history_from_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_query, assistant_response, timestamp FROM chat_history ORDER BY timestamp ASC")
+    chat_history = cursor.fetchall()
+    conn.close()
+    return chat_history
+
+# Display the chat history (optional)
+if st.checkbox("Show chat history"):
+    chat_history = load_chat_history_from_db()
+    for query, response, timestamp in chat_history:
+        st.write(f"**{timestamp}**")
+        st.write(f"**User:** {query}")
+        st.write(f"**Assistant:** {response}")
+        st.markdown("---")
+
 # Chat Functionality
 user_input = st.chat_input("Enter your question...")
 if user_input:
@@ -132,6 +167,9 @@ if user_input:
         conversation_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
         response_chain = conversation_prompt | LANGUAGE_MODEL
         ai_response = response_chain.invoke({"user_query": user_input, "document_context": context_text})
+        
+        # Save this conversation to the database
+        save_chat_to_db(user_input, ai_response, selected_id)
     
     with st.chat_message("assistant", avatar="😎"):
         st.write(ai_response)

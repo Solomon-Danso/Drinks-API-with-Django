@@ -38,7 +38,7 @@ def init_db():
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS documents (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        fileName TEXT UNIQUE,
+                        fileName TEXT,
                         Data TEXT
                     )''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS chat_history (
@@ -54,13 +54,6 @@ def init_db():
 
 init_db()
 
-# Save extracted text to SQLite
-# def save_pdf_to_db(file_name, file_text):
-#     conn = sqlite3.connect(DB_PATH)
-#     cursor = conn.cursor()
-#     cursor.execute("INSERT INTO documents (fileName, Data) VALUES (?, ?)", (file_name, file_text))
-#     conn.commit()
-#     conn.close()
 
 
 def save_pdf_to_db(file_name, file_text):
@@ -140,7 +133,7 @@ st.markdown("---")
 def delete_document(doc_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM documents WHERE Id = ?", (doc_id,))
+    cursor.execute(f"DELETE FROM documents WHERE Id = {doc_id}")
     conn.commit()
     conn.close()
     st.success(f"✅ Document {doc_id} deleted successfully!")
@@ -155,28 +148,15 @@ def Query(query):
     return result
 
 
-def delete_document_by_id(doc_id):
-    result = Query(f"SELECT fileName FROM documents WHERE Id = {doc_id}")
+
     
-    if result:  # Ensure there is a valid result
-        file_name = result[0]  # Extract fileName from tuple
-        confirmation = st.warning(f"⚠️ Are you sure **{file_name}**?")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅"):
-                delete_document(doc_id)  # Call the delete function
-                st.success(f"🗑️ Document **{file_name}** deleted successfully!")
-                st.experimental_rerun()  # Refresh the page
-        with col2:
-            if st.button("❌"):
-                st.experimental_rerun()  # Refresh without deleting
-    else:
-        st.error("❌ Document not found in the database.")
-
 
 # List PDFs from Database
 pdfs = load_pdfs_from_db()
+
+# Initialize selected_id to None before checking the selection
+selected_id = None
+selected_option = "Global"
 
 if pdfs:
     st.subheader("Available Sources")
@@ -193,7 +173,8 @@ if pdfs:
             st.write(f"**Selected Document:** {selected_option}")
         with col2:
             if st.button("🗑️", key=f"delete_{selected_id}"):
-                delete_document_by_id(selected_id)
+                delete_document(selected_id)
+                st.rerun()
 
         # Proceed only if document hasn't been deleted
         document_text = get_document_by_id(selected_id)
@@ -209,9 +190,12 @@ if pdfs:
 # Upload New PDF
 uploaded_pdf = st.file_uploader("Upload Research Document (PDF)", type="pdf", help="Select a PDF document for analysis")
 if uploaded_pdf:
-    extracted_text = extract_text_from_pdf(uploaded_pdf)
-    save_pdf_to_db(uploaded_pdf.name, extracted_text)
-    st.success("✅ New document processed and stored in the database!")
+   
+        extracted_text = extract_text_from_pdf(uploaded_pdf)
+        save_pdf_to_db(uploaded_pdf.name, extracted_text)
+        st.success("✅ New document processed and stored in the database!")
+        
+
 
 # Save chat history to the database
 def save_chat_to_db(user_query, assistant_response, document_id=None):

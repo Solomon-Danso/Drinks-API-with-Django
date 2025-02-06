@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 import pdfplumber
 import fitz  # PyMuPDF
-import io
+import os
 import time
 import subprocess  # To run system commands
 
@@ -19,6 +19,15 @@ st.markdown("---")
 
 # Database Setup
 DB_PATH = 'Database/documents.db'
+
+# Check if the directory exists, and create it if not
+if not os.path.exists(os.path.dirname(DB_PATH)):
+    try:
+        # Create the directory
+        os.makedirs(os.path.dirname(DB_PATH))
+    except Exception as e:
+        print(f"Error creating directory: {e}")
+
 
 # Function to check if Ollama is running
 def is_ollama_running():
@@ -329,5 +338,5 @@ if user_input:
         # Save this conversation to the database
         save_chat_to_db(user_input, ai_response, selected_id)
     
-    with st.chat_message("assistant", avatar="😎"):
+    with st.chat_message("assistant", avatar="🧠"):
         st.markdown(f"<div class='assistant-chat'>{ai_response}</div>", unsafe_allow_html=True)

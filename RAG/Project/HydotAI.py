@@ -15,7 +15,7 @@ LANGUAGE_MODEL = OllamaLLM(model="deepseek-r1:1.5b")
 
 PROMPT_TEMPLATE = """
 You are an expert research assistant. Use the provided context to answer the query. 
-If unsure, state that you don't know. Be concise and factual (max 3 sentences).
+If unsure, state that you don't know. Be concise and factual (max 3 sentences). 
 
 Query: {user_query} 
 Context: {document_context} 
@@ -142,22 +142,54 @@ def load_chat_history_from_db():
     conn.close()
     return chat_history
 
+# Custom CSS for chat messages
+st.markdown("""
+    <style>
+        .user-chat {
+            background-color: #4D5C6D;
+            border-radius: 15px;
+            padding: 10px 15px;
+            margin: 10px;
+            min-width: 90%;
+            text-align: right;
+            float: right;
+            clear: both;
+            color:#ffffff
+        }
+        .assistant-chat {
+            background-color:#CED6DE;
+            border-radius: 15px;
+            padding: 10px 15px;
+            margin: 10px;
+            min-width: 90%;
+            text-align: left;
+            float: left;
+            clear: both;
+            color: #000000
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Display the chat history (optional)
 if st.checkbox("Show chat history"):
     chat_history = load_chat_history_from_db()
     for query, response, timestamp in chat_history:
-        st.write(f"**{timestamp}**")
-        st.write(f"**User:** {query}")
-        st.write(f"**Assistant:** {response}")
-        st.markdown("---")
+        st.markdown(f"**{timestamp}**")
+        st.markdown(f"<div class='chat-container'><div class='user-chat'>{query}</div><div class='assistant-chat'>{response}</div></div>", unsafe_allow_html=True)
 
 # Chat Functionality
 user_input = st.chat_input("Enter your question...")
 if user_input:
     with st.chat_message("user"):
-        st.write(user_input)
+        st.markdown(f"<div class='user-chat'>{user_input}</div>", unsafe_allow_html=True)
     
-    with st.spinner("Analyzing document..."):
+    with st.spinner("Generating Response..."):
         if selected_option == "Global":
             context_text = ""  # No document context needed
         else:
@@ -172,4 +204,4 @@ if user_input:
         save_chat_to_db(user_input, ai_response, selected_id)
     
     with st.chat_message("assistant", avatar="😎"):
-        st.write(ai_response)
+        st.markdown(f"<div class='assistant-chat'>{ai_response}</div>", unsafe_allow_html=True)
